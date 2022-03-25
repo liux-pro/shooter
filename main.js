@@ -6,11 +6,12 @@ import {PointerLockControls} from "three/examples/jsm/controls/PointerLockContro
 
 const scene = new THREE.Scene()
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
+const camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000)
 
 const render = new THREE.WebGLRenderer(
     {
-        canvas: document.querySelector("#bg")
+        canvas: document.querySelector("#bg"),
+        antialias: true
     }
 )
 render.setPixelRatio(window.devicePixelRatio)
@@ -33,7 +34,9 @@ scene.add(line);
 
 const controls = new PointerLockControls(camera, render.domElement);
 
-let speed = 0.1
+let vSpeed = 0.1
+let vJump = 20
+let g = -80
 let vForward = 0
 let vRight = 0
 let vUp = 0
@@ -41,8 +44,8 @@ let vUp = 0
 document.querySelector("#lock").addEventListener("click", () => {
     controls.lock()
 })
-document.querySelector("#left").addEventListener("click", () => {
-    controls.moveRight(-1)
+document.querySelector("#jump").addEventListener("click", () => {
+    controls.getObject().position.y = 10
 })
 const onKeyDown = function (event) {
 
@@ -50,26 +53,26 @@ const onKeyDown = function (event) {
 
         case 'ArrowUp':
         case 'KeyW':
-            vForward = speed;
+            vForward = vSpeed;
             break;
 
         case 'ArrowLeft':
         case 'KeyA':
-            vRight = -speed;
+            vRight = -vSpeed;
             break;
 
         case 'ArrowDown':
         case 'KeyS':
-            vForward = -speed;
+            vForward = -vSpeed;
             break;
 
         case 'ArrowRight':
         case 'KeyD':
-            vRight = speed;
+            vRight = vSpeed;
             break;
 
         case 'Space':
-            if (vUp === 0) vUp += speed;
+            if (vUp === 0) vUp = vJump;
             break;
 
     }
@@ -99,30 +102,39 @@ const onKeyUp = function (event) {
         case 'KeyD':
             vRight = 0;
             break;
-
-        case 'Space':
-            if (vUp === 0) vUp += speed;
-            break;
-
     }
 
 };
 
 document.addEventListener('keydown', onKeyDown);
 document.addEventListener('keyup', onKeyUp);
-
+const clock = new THREE.Clock()
 
 function animate() {
+    const t = clock.getDelta()
+
     requestAnimationFrame(animate)
-    // line.rotation.x += 0.01
+    // 前后走
     if (vForward !== 0) {
         controls.moveForward(vForward)
-        // vForward = gotoZero(vForward)
     }
+    // 左右走
     if (vRight !== 0) {
         controls.moveRight(vRight)
-        // vRight = gotoZero(vRight)
     }
+    // 跳
+    if (vUp > 0 || controls.getObject().position.y !== 0) {
+        vUp = vUp + g * t
+        const dy = vUp * t + 0.5 * g * t * t
+        const y = controls.getObject().position.y + dy
+        if (y < 0) {
+            controls.getObject().position.y = 0
+            vUp = 0
+        } else {
+            controls.getObject().position.y = y
+        }
+    }
+
     render.render(scene, camera)
 }
 
@@ -130,9 +142,9 @@ function gotoZero(num) {
     if (num === 0) return num
     let after
     if (num > 0) {
-        after = num - speed
+        after = num - vSpeed
     } else {
-        after = num + speed
+        after = num + vSpeed
     }
     if (after * num > 0) {
         return after
